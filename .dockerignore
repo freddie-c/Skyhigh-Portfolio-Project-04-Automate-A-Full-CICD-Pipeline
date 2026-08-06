@@ -1,0 +1,20 @@
+# Repo and CI metadata
+.git
+.github
+
+# Host virtualenv - wrong architecture anyway
+.venv
+
+# Test code and configs do not ship to production
+tests
+pyproject.toml
+requirements-dev.txt
+.flake8
+
+# Python caches
+**/__pycache__
+**/*.pyc
+
+# Docs and manifests
+README.md
+k8s                                            

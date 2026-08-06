@@ -1,0 +1,7 @@
+[flake8]
+# max-line-length: 120, not PEP 8's 79 — right-aligned inline comments add 40-60 chars per line
+max-line-length = 120
+# max-complexity: enables the C901 check; fails any function with too many branches
+max-complexity = 10
+# exclude: never lint dependencies, caches, or build output
+exclude = .venv,__pycache__,.git,build,dist

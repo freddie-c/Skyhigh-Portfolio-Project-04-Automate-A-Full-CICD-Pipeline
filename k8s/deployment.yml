@@ -1,0 +1,71 @@
+apiVersion: apps/v1                                      # Deployments live in apps/, not core v1
+kind: Deployment                                         # manages a ReplicaSet, which manages Pods
+metadata:
+  name: web                                              # short; the namespace supplies the context
+  namespace: skyhigh-cicd                                # CHAIN 1 — must match namespace.yaml
+  labels:
+    app: skyhigh-cicd-web                                # label on the Deployment object itself (cosmetic)
+spec:
+  replicas: 2                                            # two pods: proves load balancing, enables zero-downtime
+  revisionHistoryLimit: 3                                # keep 3 old ReplicaSets for rollback; default 10 is clutter
+  strategy:
+    type: RollingUpdate                                  # replace pods gradually; alternative is Recreate (downtime)
+    rollingUpdate:
+      maxSurge: 1                                        # may run 1 pod above replicas during a roll (3 total)
+      maxUnavailable: 0                                  # never drop below 2 ready — this IS the zero-downtime rule
+  selector:
+    matchLabels:
+      app: skyhigh-cicd-web                              # CHAIN 2 — which Pods this Deployment owns; immutable
+  template:                                              # everything below is the Pod blueprint
+    metadata:
+      labels:
+        app: skyhigh-cicd-web                            # CHAIN 2 + CHAIN 3 — the label actually stamped on Pods
+    spec:
+      securityContext:                                   # POD level: applies to every container in the pod
+        runAsNonRoot: true                               # kubelet refuses to start the pod if the image runs as root
+        runAsUser: 10001                                 # CHAIN 4 — must match the Dockerfile's --uid
+        runAsGroup: 10001                                # CHAIN 4 — must match the Dockerfile's --gid
+        fsGroup: 10001                                   # group ownership applied to mounted volumes
+        seccompProfile:
+          type: RuntimeDefault                           # blocks dangerous syscalls; required by "restricted" policy
+      containers:
+        - name: web                                      # container name; appears in kubectl logs -c web
+          image: freddiec1212/full-cicd-pipeline:v1.0    # placeholder — the deploy job rewrites this tag each run
+          imagePullPolicy: IfNotPresent                  # skip the pull if this exact tag is already on the node
+          ports:
+            - name: http                                 # named port — probes and the Service reference it by name
+              containerPort: 5001                        # what gunicorn binds inside the container
+          env:
+            - name: APP_VERSION                          # read by app.py via os.getenv
+              value: "v1.0"                              # deploy job overwrites this to match the image tag
+          securityContext:                               # CONTAINER level: extends the pod block above
+            allowPrivilegeEscalation: false              # blocks setuid binaries from gaining privileges
+            readOnlyRootFilesystem: true                 # immutable filesystem — see the /tmp volume below
+            capabilities:
+              drop: ["ALL"]                              # surrender every Linux capability; a web app needs none
+          volumeMounts:
+            - name: tmp                                  # gunicorn needs somewhere writable for worker temp files
+              mountPath: /tmp                            # the only writable path in an otherwise read-only container
+          resources:
+            requests:                                    # what the scheduler reserves; your guaranteed floor
+              cpu: 100m                                  # 100 millicores = 0.1 of one CPU core
+              memory: 128Mi
+            limits:                                      # hard ceiling; exceed memory = OOMKill, CPU = throttle
+              cpu: 250m
+              memory: 256Mi
+          readinessProbe:                                # "can this pod receive traffic RIGHT NOW?"
+            httpGet:
+              path: /health                              # the cheap endpoint in app.py
+              port: http                                 # references the named port above, not a raw number
+            initialDelaySeconds: 3                       # gunicorn needs a moment to fork its workers
+            periodSeconds: 5                             # re-check every 5 seconds
+          livenessProbe:                                 # "is this pod broken and in need of a restart?"
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10                      # always longer than readiness — never restart during startup
+            periodSeconds: 10
+            failureThreshold: 3                          # 3 strikes (~30s) before the kubelet kills the container
+      volumes:
+        - name: tmp                                      # must match volumeMounts.name above
+          emptyDir: {}                                   # ephemeral scratch space; dies with the pod

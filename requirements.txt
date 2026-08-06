@@ -1,0 +1,2 @@
+flask==3.0.3                                             # pinned exactly; same version Project 3 was proven on
+gunicorn==22.0.0                                         # production WSGI server; replaces the dev server

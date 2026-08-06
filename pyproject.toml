@@ -1,0 +1,4 @@
+[tool.pytest.ini_options]
+pythonpath = ["."]                                       # puts repo root on sys.path so `from app import ...` works
+testpaths = ["tests"]                                    # only collect from tests/; never scan .venv
+addopts = "-v --cov=app --cov-report=term-missing --cov-fail-under=90"   # verbose + coverage + a real gate

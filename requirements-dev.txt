@@ -1,0 +1,4 @@
+-r requirements.txt                                      # pull in runtime deps so one install covers everything
+pytest==8.3.3                                            # test runner
+pytest-cov==5.0.0                                        # coverage plugin; requirement #4 wants the percentage
+flake8==7.1.1                                            # linter; requirement #3

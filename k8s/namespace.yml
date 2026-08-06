@@ -1,0 +1,6 @@
+apiVersion: v1                                           # core API group
+kind: Namespace                                          # a soft isolation boundary within one cluster
+metadata:
+  name: skyhigh-cicd                                     # CHAIN 1 anchor — every other file must reference this
+  labels:
+    project: skyhigh-cicd                                # lets you select or delete everything by label later

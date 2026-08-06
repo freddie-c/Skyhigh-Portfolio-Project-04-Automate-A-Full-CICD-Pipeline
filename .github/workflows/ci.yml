@@ -1,0 +1,65 @@
+name: CI/CD Pipeline                                     # appears in the Actions tab and on commit status checks
+
+on:                                                      # the trigger block - what causes this workflow to run
+  push:
+    branches: [main]                                     # every push to main - full pipeline, deploy included
+  pull_request:
+    branches: [main]                                     # PRs targeting main - gates run, deploy is skipped
+
+permissions:                                             # least privilege; overrides the repo's default token scope
+  contents: read                                         # GITHUB_TOKEN can read code and do nothing else
+
+concurrency:                                             # stops two runs of the same branch racing each other
+  group: ${{ github.workflow }}-${{ github.ref }}        # one lane per workflow + branch combination
+  cancel-in-progress: true                               # a newer push cancels the older run instead of queueing
+
+env:                                                     # workflow-level variables, visible to every job
+  PYTHON_VERSION: "3.11"                                 # single source of truth; matches your venv and the image
+
+jobs:
+  lint:                                                  # JOB 1 - runs first, gates the rest of the pipeline
+    name: Lint (flake8)                                  # display name in the Actions UI
+    runs-on: ubuntu-latest                               # a fresh VM for every run; no state is preserved between jobs
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4                        # the VM starts empty; this clones your repo onto it
+
+      - name: Set up Python
+        uses: actions/setup-python@v5                    # installs a specific Python version on the runner
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}      # reads the env block above
+          cache: pip                                     # caches downloaded wheels between runs
+
+      - name: Install lint dependencies
+        run: |                                           # | is a YAML block scalar - multi-line shell script
+          python -m pip install --upgrade pip            # -m pip targets THIS interpreter, not an ambient one
+          python -m pip install flake8==7.1.1            # only flake8; this job needs nothing else
+
+      - name: Run flake8
+        run: flake8 .                                    # non-zero exit fails the step, the job, and the pipeline
+
+  test:                                                  # JOB 2, runs after lint, gates deploy, and runs in a different VM
+    name: Test (pytest + coverage)
+    runs-on: ubuntu-latest                               # a DIFFERENT fresh VM than the one used for lint; no state is preserved between jobs
+    needs: lint                                          # QUALITY GATE - will not start unless lint succeeded
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4                        # yes, again - new VM, empty disk
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-dev.txt  # -r pulls requirements.txt in too, so flask arrives
+
+      - name: Run pytest with coverage
+        run: pytest                                      # pyproject.toml supplies -v, --cov, --cov-fail-under=90
+
+      - name: Coverage summary
+        if: always()                                     # runs even when pytest failed, so you still see the number
+        run: coverage report --precision=2               # reprints from the .coverage file pytest wrote

@@ -1,0 +1,14 @@
+apiVersion: v1                                           # Services are core API
+kind: Service
+metadata:
+  name: web                                              # DNS becomes web.skyhigh-cicd.svc.cluster.local
+  namespace: skyhigh-cicd                                # CHAIN 1 — must match namespace.yaml
+spec:
+  type: ClusterIP                                        # internal-only virtual IP; correct default for kind
+  selector:
+    app: skyhigh-cicd-web                                # CHAIN 3 — matches POD labels, not the Deployment
+  ports:
+    - name: http
+      port: 80                                           # the port the Service listens on inside the cluster
+      targetPort: http                                   # forwards to the container's named port (5001)
+      protocol: TCP
