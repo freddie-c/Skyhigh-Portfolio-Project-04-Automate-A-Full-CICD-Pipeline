@@ -91,11 +91,11 @@ jobs:
         with:
           context: .                                     # build context = repo root; .dockerignore prunes it
           file: ./Dockerfile                             # explicit path, so a future move breaks loudly not silently
-          platforms: linux/amd64,linux/arm64             # THE FIX - arm64 is what your Apple Silicon node needs
+          platforms: linux/amd64,linux/arm64             # THE FIX for arm64 - your Apple Silicon node needs this
           push: ${{ github.event_name != 'pull_request' }}   # PRs build to verify, only real pushes publish
-          tags: |                                        # multi-line block; one tag per line
-            ${{ env.IMAGE_NAME }}:v1.0.${{ github.run_number }}   # immutable version tag - the audit trail
-            ${{ env.IMAGE_NAME }}:latest                 # moving pointer; convenience only, never for deploys
+          tags: |
+            ${{ env.IMAGE_NAME }}:v1.0.${{ github.run_number }}
+            ${{ env.IMAGE_NAME }}:latest
           cache-from: type=gha                           # reuse layers cached by previous runs
           cache-to: type=gha,mode=max                    # save every layer, not just the final one
 
