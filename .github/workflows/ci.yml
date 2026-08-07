@@ -45,7 +45,7 @@ jobs:
     needs: lint                                          # QUALITY GATE - will not start unless lint succeeded
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4                        # yes, again - new VM, empty disk
+        uses: actions/checkout@v4                        # New VM, empty disk
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -91,7 +91,7 @@ jobs:
         with:
           context: .                                     # build context = repo root; .dockerignore prunes it
           file: ./Dockerfile                             # explicit path, so a future move breaks loudly not silently
-          platforms: linux/amd64,linux/arm64             # THE FIX for arm64 - your Apple Silicon node needs this
+          platforms: linux/amd64,linux/arm64             # THE FIX for arm64 - Apple Silicon node needs this
           push: ${{ github.event_name != 'pull_request' }}   # PRs build to verify, only real pushes publish
           tags: |
             ${{ env.IMAGE_NAME }}:v1.0.${{ github.run_number }}
@@ -104,3 +104,45 @@ jobs:
         run: |
           echo "Published: ${{ env.IMAGE_NAME }}:v1.0.${{ github.run_number }}"   # visible in the job log
           echo "IMAGE_TAG=v1.0.${{ github.run_number }}" >> "$GITHUB_STEP_SUMMARY"   # pinned to the run summary page
+
+  deploy:                                                # JOB 4
+    name: Deploy (kind cluster)
+    runs-on: [self-hosted, skyhigh-mac]                  # array = ALL labels must match; targets your Mac specifically
+    needs: build                                         # QUALITY GATE - nothing deploys unless an image was published
+    if: github.ref == 'refs/heads/main'                  # REQUIRED - main only; also blocks PRs from touching your laptop
+    env:
+      TAG: v1.0.${{ github.run_number }}                 # same tag the build job just published; single source of truth
+      NS: skyhigh-cicd                                   # namespace, so no string is repeated across steps
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4                        # brings k8s/ manifests onto the runner
+
+      - name: Verify cluster context
+        run: |
+          kubectl config use-context kind-skyhigh        # never trust ambient context - Docker Desktop steals it
+          kubectl cluster-info --context kind-skyhigh    # fails loudly if the cluster is down
+
+      - name: Apply namespace first
+        run: kubectl apply -f k8s/namespace.yml --validate=strict   # must exist before anything references it
+
+      - name: Apply manifests
+        run: kubectl apply -f k8s/ --validate=strict     # Deployment + Service; idempotent, safe to re-run
+
+      - name: Pin image tag and version
+        run: |
+          kubectl -n "$NS" patch deployment web --type=strategic -p "{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"web\",\"image\":\"${{ env.IMAGE_NAME }}:${TAG}\",\"env\":[{\"name\":\"APP_VERSION\",\"value\":\"${TAG}\"}]}]}}}}"
+
+      - name: Wait for rollout
+        run: kubectl -n "$NS" rollout status deployment/web --timeout=120s   # blocks until Ready, or fails the job
+
+      - name: Smoke test the live service
+        run: |
+          kubectl -n "$NS" run smoke-${{ github.run_number }} \
+            --rm -i --restart=Never --image=curlimages/curl:8.10.1 \
+            --command -- curl -sf --max-time 10 http://web.${NS}.svc.cluster.local/
+
+      - name: Deployment summary
+        if: always()                                     # report even on failure, so the log shows final state
+        run: |
+          echo "### Deployed \`${{ env.IMAGE_NAME }}:${TAG}\`" >> "$GITHUB_STEP_SUMMARY"
+          kubectl -n "$NS" get pods -o wide >> "$GITHUB_STEP_SUMMARY"
