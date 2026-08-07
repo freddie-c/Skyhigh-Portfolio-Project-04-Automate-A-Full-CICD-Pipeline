@@ -15,6 +15,7 @@ concurrency:                                             # stops two runs of the
 
 env:                                                     # workflow-level variables, visible to every job
   PYTHON_VERSION: "3.11"                                 # single source of truth; matches your venv and the image
+  IMAGE_NAME: freddiec1212/full-cicd-pipeline            # Docker Hub repo; build and deploy both reference this
 
 jobs:
   lint:                                                  # JOB 1 - runs first, gates the rest of the pipeline
@@ -63,3 +64,43 @@ jobs:
       - name: Coverage summary
         if: always()                                     # runs even when pytest failed, so you still see the number
         run: coverage report --precision=2               # reprints from the .coverage file pytest wrote
+
+  build:                                                 # JOB 3
+    name: Build & Push (Docker Hub)
+    runs-on: ubuntu-latest                               # amd64 VM - the architecture mismatch starts here
+    needs: test                                          # QUALITY GATE - no image is built unless all tests passed
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4                        # third fresh VM, third checkout
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3                # installs CPU emulators so amd64 can build arm64 binaries
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3              # replaces the default builder with one that does multi-arch
+
+      - name: Log in to Docker Hub
+        if: github.event_name != 'pull_request'          # fork PRs have no secrets; skip login rather than fail
+        uses: docker/login-action@v3                     # writes credentials into the runner's docker config
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}       # never the literal string - always the secrets context
+          password: ${{ secrets.DOCKER_PASSWORD }}       # the access token, not your account password
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6                # wraps buildx; handles multi-arch and manifest lists
+        with:
+          context: .                                     # build context = repo root; .dockerignore prunes it
+          file: ./Dockerfile                             # explicit path, so a future move breaks loudly not silently
+          platforms: linux/amd64,linux/arm64             # THE FIX - arm64 is what your Apple Silicon node needs
+          push: ${{ github.event_name != 'pull_request' }}   # PRs build to verify, only real pushes publish
+          tags: |                                        # multi-line block; one tag per line
+            ${{ env.IMAGE_NAME }}:v1.0.${{ github.run_number }}   # immutable version tag - the audit trail
+            ${{ env.IMAGE_NAME }}:latest                 # moving pointer; convenience only, never for deploys
+          cache-from: type=gha                           # reuse layers cached by previous runs
+          cache-to: type=gha,mode=max                    # save every layer, not just the final one
+
+      - name: Report published tag
+        if: github.event_name != 'pull_request'          # nothing was published on a PR, so nothing to report
+        run: |
+          echo "Published: ${{ env.IMAGE_NAME }}:v1.0.${{ github.run_number }}"   # visible in the job log
+          echo "IMAGE_TAG=v1.0.${{ github.run_number }}" >> "$GITHUB_STEP_SUMMARY"   # pinned to the run summary page
