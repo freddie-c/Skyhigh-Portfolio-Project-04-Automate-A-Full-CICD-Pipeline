@@ -12,7 +12,7 @@ def client():                                            # any test declaring a 
 def test_root_returns_greeting(client):                  # the required passing test
     resp = client.get("/")                               # simulated GET /; no container, no network, milliseconds
     assert resp.status_code == 200                       # gate 1: route exists and the view didn't raise
-    assert resp.get_json()["message"] == GREETING        # gate 2: exact string, not a close-enough lookalike
+    assert resp.get_json()["message"] == GREETING + "!"        # gate 2: wrong proves the gate blocks the build
 
 
 def test_health_returns_ok(client):                      # probes are a contract; test them like any endpoint
