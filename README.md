@@ -1,6 +1,6 @@
 # SkyHigh Portfolio Project 04 — Automate Everything: A Full CI/CD Pipeline
 
-[![CI/CD Pipeline](https://github.com/freddie-c/Skyhigh-Portfolio-Project-04-Automate-A-Full-CICD-Pipepline/actions/workflows/ci.yml/badge.svg)](https://github.com/freddie-c/Skyhigh-Portfolio-Project-04-Automate-A-Full-CICD-Pipepline/actions/workflows/ci.yml)
+[![CI/CD Pipeline](https://github.com/freddie-c/Skyhigh-Portfolio-Project-04-Automate-A-Full-CICD-Pipeline/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/freddie-c/Skyhigh-Portfolio-Project-04-Automate-A-Full-CICD-Pipeline/actions/workflows/ci.yml)
 [![Docker Hub](https://img.shields.io/badge/Docker%20Hub-freddiec1212%2Ffull--cicd--pipeline-2496ED?logo=docker&logoColor=white)](https://hub.docker.com/r/freddiec1212/full-cicd-pipeline)
 [![Coverage](https://img.shields.io/badge/coverage-94.44%25-brightgreen)](#proof-of-production)
 [![Platforms](https://img.shields.io/badge/platforms-linux%2Famd64%20%7C%20linux%2Farm64-informational)](#proof-of-production)
@@ -190,8 +190,8 @@ No AWS account required — this project runs entirely locally and on GitHub's f
 
 ```bash
 # 1. Clone and enter the project
-git clone https://github.com/freddie-c/Skyhigh-Portfolio-Project-04-Automate-A-Full-CICD-Pipepline.git
-cd Skyhigh-Portfolio-Project-04-Automate-A-Full-CICD-Pipepline
+git clone https://github.com/freddie-c/Skyhigh-Portfolio-Project-04-Automate-A-Full-CICD-Pipeline.git
+cd Skyhigh-Portfolio-Project-04-Automate-A-Full-CICD-Pipeline
 
 # 2. Create and activate a virtual environment
 python3.11 -m venv .venv
