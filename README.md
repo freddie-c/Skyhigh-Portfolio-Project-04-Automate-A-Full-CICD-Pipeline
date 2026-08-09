@@ -5,8 +5,6 @@
 [![Coverage](https://img.shields.io/badge/coverage-94.44%25-brightgreen)](#proof-of-production)
 [![Platforms](https://img.shields.io/badge/platforms-linux%2Famd64%20%7C%20linux%2Farm64-informational)](#proof-of-production)
 
-> **Badge note:** the workflow badge reads live from the `ci.yml` workflow on `main`. If the repo is ever renamed, update the two URLs above — GitHub redirects the repo page but not the badge SVG.
-
 ## Project Description
 
 I replaced a manual SSH-and-pray deployment process with a fully automated GitHub Actions pipeline: every push to `main` lints the code, runs a gated test suite with a coverage floor, builds a multi-architecture Docker image, publishes it to Docker Hub with an immutable version tag, and performs a zero-downtime rolling deploy to a live Kubernetes cluster — finishing with an in-cluster smoke test against the running Service.
