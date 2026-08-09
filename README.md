@@ -37,41 +37,38 @@ I replaced a manual SSH-and-pray deployment process with a fully automated GitHu
 
 ## Proof of Production
 
-> Replace each placeholder below with your screenshot. Suggested captions are already written.
-
 **1. Full pipeline green**
 
-`[screenshot: ci-pipeline-green.png]`
+<img width="977" height="367" alt="Lint-Test-Build-Deploy" src="https://github.com/user-attachments/assets/729cf547-f2c1-4775-9c8e-9f89e35c1fa6" />
 
 *All four jobs succeeded on a push to `main`: Lint → Test → Build & Push → Deploy. The connecting arrows are the `needs:` chain rendered by GitHub — the dependency graph comes straight from the YAML.*
 
 **2. Quality gate blocking a bad commit**
 
-`[screenshot: ci-gate-blocked.png]`
+<img width="840" height="416" alt="Broken Cide" src="https://github.com/user-attachments/assets/8407a329-af23-407c-ac43-c6f8135610ec" />
 
 *An intentionally failing test on a pull request. Test failed, so **Build and Deploy show as skipped, not failed** — they never booted a VM and never ran a line of code. No image was built, so nothing could reach Docker Hub or the cluster. This is the gate working exactly as designed.*
 
 **3. Multi-architecture manifest list**
 
-`[screenshot: buildx-imagetools-inspect.png]`
+<img width="829" height="116" alt="Screenshot 2026-08-08 at 6 56 42 PM" src="https://github.com/user-attachments/assets/1e956480-5ee2-4ba9-8cf3-5e92cec0f018" />
 
 *`docker buildx imagetools inspect` showing one tag resolving to both `linux/amd64` and `linux/arm64`, plus two attestation manifests carrying SBOM and provenance data. The kind node pulls the arm64 variant automatically.*
 
 **4. Self-hosted runner executing the deploy**
 
-`[screenshot: runner-deploy-success.png]`
 
 *The runner on my MacBook picked up the deploy job and completed it in 58 seconds. GitHub dispatched the job over a connection the runner initiated outbound — nothing inbound was ever opened.*
 
 **5. Audit trail closed end to end**
 
-`[screenshot: curl-version-tag.png]`
+<img width="833" height="85" alt="Screenshot 2026-08-08 at 7 10 41 PM" src="https://github.com/user-attachments/assets/7c77be4b-06ab-4994-a1cf-0f16b94df8eb" />
 
 *A live `curl` against the Service returns `"version": "v1.0.4"` — the exact GitHub run number that built the running code. Run number → workflow run → commit → author. That is the audit trail, observable rather than documented.*
 
 **6. Zero-downtime rolling update**
 
-`[screenshot: kubectl-get-pods-rollout.png]`
+<img width="627" height="227" alt="Screenshot 2026-08-08 at 7 13 49 PM" src="https://github.com/user-attachments/assets/83edf52d-3b3d-41a4-af39-ef2aada272b7" />
 
 *Pod ages ten seconds apart, both `1/1 READY`, zero restarts. With `maxUnavailable: 0`, Kubernetes brought up a replacement, waited for its readiness probe, and only then terminated an old pod — never fewer than two serving.*
 
